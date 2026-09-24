@@ -25,7 +25,11 @@ export function HomeScreen() {
     [tasks],
   );
 
-  const onLongPressTask = (task: Task) => {
+  const onEditTask = (task: Task) => {
+    navigation.navigate('CreateTask', { taskId: task.id });
+  };
+
+  const onDeleteTask = (task: Task) => {
     confirmDestructive("Vazifani o'chirish", `"${task.title}" o'chirilsinmi?`, "O'chirish", () =>
       deleteTask(task.id),
     );
@@ -78,7 +82,7 @@ export function HomeScreen() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ gap: spacing.md, paddingBottom: 80 }}
             renderItem={({ item }) => (
-              <TaskRow task={item} variant="inline" onToggle={completeTask} onPress={onLongPressTask} />
+              <TaskRow task={item} variant="inline" onToggle={completeTask} onEdit={onEditTask} onDelete={onDeleteTask} />
             )}
             ListEmptyComponent={<Text style={styles.emptyText}>Bugun uchun vazifa yo'q</Text>}
           />

@@ -5,7 +5,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 export type RootStackParamList = {
   Login: undefined;
   Main: undefined;
-  CreateTask: undefined;
+  CreateTask: { taskId?: string } | undefined;
 };
 
 export type MainTabParamList = {

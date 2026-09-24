@@ -13,18 +13,26 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, radii, spacing } from '../theme/colors';
 import { BackIcon } from '../components/icons';
 import { useTasks } from '../api/TasksContext';
-import { formatDateInput, parseDateTimeInputs } from '../utils/date';
+import { formatDateInput, formatTime, parseDateTimeInputs } from '../utils/date';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateTask'>;
 
-export function CreateTaskScreen({ navigation }: Props) {
-  const { createTask } = useTasks();
+export function CreateTaskScreen({ navigation, route }: Props) {
+  const { tasks, createTask, updateTask } = useTasks();
+  const taskId = route.params?.taskId;
+  const existingTask = taskId ? tasks.find((t) => t.id === taskId) : undefined;
+  const isEditMode = Boolean(taskId);
+
   const [reminderOn, setReminderOn] = useState(true);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [dateStr, setDateStr] = useState(formatDateInput(new Date()));
-  const [timeStr, setTimeStr] = useState('14:00');
+  const [title, setTitle] = useState(existingTask?.title ?? '');
+  const [description, setDescription] = useState(existingTask?.description ?? '');
+  const [dateStr, setDateStr] = useState(
+    existingTask?.dueAt ? formatDateInput(new Date(existingTask.dueAt)) : formatDateInput(new Date()),
+  );
+  const [timeStr, setTimeStr] = useState(
+    existingTask?.dueAt ? formatTime(existingTask.dueAt) : '14:00',
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -36,11 +44,12 @@ export function CreateTaskScreen({ navigation }: Props) {
     const dueAt = parseDateTimeInputs(dateStr, timeStr) ?? undefined;
     setIsSaving(true);
     setFormError(null);
-    const ok = await createTask({
+    const input = {
       title: title.trim(),
       description: description.trim() || undefined,
       dueAt,
-    });
+    };
+    const ok = isEditMode && taskId ? await updateTask(taskId, input) : await createTask(input);
     setIsSaving(false);
     if (ok) {
       navigation.goBack();
@@ -59,7 +68,7 @@ export function CreateTaskScreen({ navigation }: Props) {
         >
           <BackIcon size={18} />
         </Pressable>
-        <Text style={styles.heading}>Yangi vazifa</Text>
+        <Text style={styles.heading}>{isEditMode ? 'Vazifani tahrirlash' : 'Yangi vazifa'}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.form}>

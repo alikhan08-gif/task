@@ -8,6 +8,7 @@ type TasksState = {
   error: string | null;
   refresh: () => Promise<void>;
   createTask: (input: CreateTaskInput) => Promise<boolean>;
+  updateTask: (id: string, input: Partial<CreateTaskInput>) => Promise<boolean>;
   completeTask: (id: string) => Promise<boolean>;
   deleteTask: (id: string) => Promise<boolean>;
 };
@@ -58,6 +59,22 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
     [accessToken],
   );
 
+  const updateTask = useCallback(
+    async (id: string, input: Partial<CreateTaskInput>) => {
+      if (!accessToken) return false;
+      setError(null);
+      try {
+        const updated = await api.updateTask(accessToken, id, input);
+        setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+        return true;
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Vazifani saqlab bo'lmadi");
+        return false;
+      }
+    },
+    [accessToken],
+  );
+
   const completeTask = useCallback(
     async (id: string) => {
       if (!accessToken) return false;
@@ -92,7 +109,9 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <TasksContext.Provider value={{ tasks, isLoading, error, refresh, createTask, completeTask, deleteTask }}>
+    <TasksContext.Provider
+      value={{ tasks, isLoading, error, refresh, createTask, updateTask, completeTask, deleteTask }}
+    >
       {children}
     </TasksContext.Provider>
   );

@@ -34,7 +34,11 @@ export function TasksScreen() {
   );
   const doneCount = dayTasks.filter((t) => t.status === 'COMPLETED').length;
 
-  const onLongPressTask = (task: Task) => {
+  const onEditTask = (task: Task) => {
+    navigation.navigate('CreateTask', { taskId: task.id });
+  };
+
+  const onDeleteTask = (task: Task) => {
     confirmDestructive("Vazifani o'chirish", `"${task.title}" o'chirilsinmi?`, "O'chirish", () =>
       deleteTask(task.id),
     );
@@ -77,7 +81,7 @@ export function TasksScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
-            <TaskRow task={item} variant="timeline" onToggle={completeTask} onPress={onLongPressTask} />
+            <TaskRow task={item} variant="timeline" onToggle={completeTask} onEdit={onEditTask} onDelete={onDeleteTask} />
           )}
           ItemSeparatorComponent={() => <View style={{ height: spacing.sm + 2 }} />}
           ListEmptyComponent={<Text style={styles.emptyText}>Bu kun uchun vazifa yo'q</Text>}

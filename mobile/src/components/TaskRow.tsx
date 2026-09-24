@@ -9,17 +9,19 @@ type Props = {
   task: Task;
   variant?: 'inline' | 'timeline';
   onToggle?: (id: string) => void;
-  onPress?: (task: Task) => void;
+  onEdit?: (task: Task) => void;
+  onDelete?: (task: Task) => void;
 };
 
-export function TaskRow({ task, variant = 'inline', onToggle, onPress }: Props) {
+export function TaskRow({ task, variant = 'inline', onToggle, onEdit, onDelete }: Props) {
   const done = task.status === 'COMPLETED';
   const time = formatTime(task.dueAt);
 
   const card = (
     <Pressable
-      onPress={() => onPress?.(task)}
-      onLongPress={onPress ? () => onPress(task) : undefined}
+      onPress={() => onEdit?.(task)}
+      onLongPress={onDelete ? () => onDelete(task) : undefined}
+      delayLongPress={450}
       style={styles.card}
     >
       <Pressable

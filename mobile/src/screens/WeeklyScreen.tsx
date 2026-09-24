@@ -40,7 +40,11 @@ export function WeeklyScreen() {
 
   const hasTasksOn = (date: Date) => tasks.some((t) => t.dueAt && isSameCalendarDay(new Date(t.dueAt), date));
 
-  const onLongPressTask = (task: Task) => {
+  const onEditTask = (task: Task) => {
+    navigation.navigate('CreateTask', { taskId: task.id });
+  };
+
+  const onDeleteTask = (task: Task) => {
     confirmDestructive("Vazifani o'chirish", `"${task.title}" o'chirilsinmi?`, "O'chirish", () =>
       deleteTask(task.id),
     );
@@ -110,7 +114,7 @@ export function WeeklyScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
-            <TaskRow task={item} variant="inline" onToggle={completeTask} onPress={onLongPressTask} />
+            <TaskRow task={item} variant="inline" onToggle={completeTask} onEdit={onEditTask} onDelete={onDeleteTask} />
           )}
           ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
           ListEmptyComponent={<Text style={styles.emptyText}>Bu kun uchun vazifa yo'q</Text>}
