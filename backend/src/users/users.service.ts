@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { NotificationLevel } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -34,6 +35,7 @@ export class UsersService {
       id: user.id,
       email: user.email,
       timezone: user.timezone,
+      notificationLevel: user.notificationLevel,
       createdAt: user.createdAt,
       xp: xpSum._sum.amount ?? 0,
       telegramLinked: Boolean(user.telegramLink),
@@ -53,6 +55,14 @@ export class UsersService {
     await this.prisma.user.update({
       where: { id: userId },
       data: { timezone },
+    });
+    return this.getProfile(userId);
+  }
+
+  async updateNotificationLevel(userId: string, level: NotificationLevel) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { notificationLevel: level },
     });
     return this.getProfile(userId);
   }

@@ -49,10 +49,13 @@ export type AuthResponse = {
   refreshToken: string;
 };
 
+export type NotificationLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
 export type ProfileResponse = {
   id: string;
   email: string;
   timezone: string;
+  notificationLevel: NotificationLevel;
   createdAt: string;
   xp: number;
   telegramLinked: boolean;
@@ -104,4 +107,17 @@ export const api = {
 
   telegramLink: (token: string) =>
     request<{ token: string; deepLink: string }>('/telegram/link', { method: 'POST' }, token),
+
+  updateTimezone: (token: string, timezone: string) =>
+    request<ProfileResponse>(
+      '/profile/timezone',
+      { method: 'PATCH', body: JSON.stringify({ timezone }) },
+      token,
+    ),
+  updateNotificationLevel: (token: string, notificationLevel: NotificationLevel) =>
+    request<ProfileResponse>(
+      '/profile/notification-level',
+      { method: 'PATCH', body: JSON.stringify({ notificationLevel }) },
+      token,
+    ),
 };

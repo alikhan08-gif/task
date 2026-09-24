@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, RequestUser } from '../auth/current-user.decorator';
 import { UsersService } from './users.service';
 import { UpdateTimezoneDto } from './dto/update-timezone.dto';
+import { UpdateNotificationLevelDto } from './dto/update-notification-level.dto';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -22,5 +23,16 @@ export class UsersController {
     @Body() dto: UpdateTimezoneDto,
   ) {
     return this.usersService.updateTimezone(user.userId, dto.timezone);
+  }
+
+  @Patch('notification-level')
+  updateNotificationLevel(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: UpdateNotificationLevelDto,
+  ) {
+    return this.usersService.updateNotificationLevel(
+      user.userId,
+      dto.notificationLevel,
+    );
   }
 }

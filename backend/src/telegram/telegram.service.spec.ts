@@ -25,6 +25,7 @@ describe('TelegramService', () => {
       telegramLink: {
         findUnique: jest.fn(),
         upsert: jest.fn(),
+        deleteMany: jest.fn(),
       },
       task: {
         findMany: jest.fn(),
@@ -121,6 +122,7 @@ describe('TelegramService', () => {
         expiresAt: new Date(Date.now() + 100000),
       });
       prisma.telegramLinkToken.update.mockResolvedValue({});
+      prisma.telegramLink.deleteMany.mockResolvedValue({ count: 0 });
       prisma.telegramLink.upsert.mockResolvedValue({});
 
       await service.consumeLinkToken('t1', 'chat-42');
@@ -130,6 +132,24 @@ describe('TelegramService', () => {
           create: { userId: 'user-1', telegramChatId: 'chat-42' },
         }),
       );
+    });
+
+    it("shu Telegram chat avval boshqa hisobga bog'langan bo'lsa, eski bog'lanishni tozalab qaytadan bog'laydi", async () => {
+      prisma.telegramLinkToken.findUnique.mockResolvedValue({
+        token: 't1',
+        userId: 'user-new',
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 100000),
+      });
+      prisma.telegramLinkToken.update.mockResolvedValue({});
+      prisma.telegramLink.deleteMany.mockResolvedValue({ count: 1 });
+      prisma.telegramLink.upsert.mockResolvedValue({});
+
+      await service.consumeLinkToken('t1', 'chat-42');
+
+      expect(prisma.telegramLink.deleteMany).toHaveBeenCalledWith({
+        where: { telegramChatId: 'chat-42', userId: { not: 'user-new' } },
+      });
     });
   });
 
@@ -164,7 +184,7 @@ describe('TelegramService', () => {
       expect(prisma.task.findMany).not.toHaveBeenCalled();
     });
 
-    it('muddati kelgan vazifalar uchun eslatma yuboradi va reminderSentAt belgilaydi', async () => {
+    it('MEDIUM darajali foydalanuvchi uchun muddati kelganda darrov eslatma yuboradi', async () => {
       const sendMessage = jest.fn().mockResolvedValue({});
       (service as any).bot = { telegram: { sendMessage } };
 
@@ -173,6 +193,9 @@ describe('TelegramService', () => {
         userId: 'user-1',
         title: 'Sport zali',
         dueAt: new Date(Date.now() - 1000),
+        reminderCount: 0,
+        reminderSentAt: null,
+        user: { notificationLevel: 'MEDIUM' },
       };
       prisma.task.findMany.mockResolvedValue([dueTask]);
       prisma.telegramLink.findUnique.mockResolvedValue({
@@ -188,8 +211,8 @@ describe('TelegramService', () => {
           where: expect.objectContaining({
             status: 'PENDING',
             deletedAt: null,
-            reminderSentAt: null,
           }),
+          include: { user: { select: { notificationLevel: true } } },
         }),
       );
       expect(sendMessage).toHaveBeenCalledWith(
@@ -199,18 +222,21 @@ describe('TelegramService', () => {
       );
       expect(prisma.task.update).toHaveBeenCalledWith({
         where: { id: 'task-1' },
-        data: { reminderSentAt: expect.any(Date) },
+        data: { reminderSentAt: expect.any(Date), reminderCount: { increment: 1 } },
       });
     });
 
-    it("bog'lanmagan foydalanuvchi bo'lsa ham reminderSentAt'ni belgilab qo'yadi (takror urinmaslik uchun)", async () => {
+    it("bog'lanmagan foydalanuvchi bo'lsa ham reminderCount'ni oshirib qo'yadi (takror urinmaslik uchun)", async () => {
       (service as any).bot = { telegram: { sendMessage: jest.fn() } };
 
       const dueTask = {
         id: 'task-2',
         userId: 'user-2',
-        title: 'Bog\'lanmagan',
+        title: "Bog'lanmagan",
         dueAt: new Date(Date.now() - 1000),
+        reminderCount: 0,
+        reminderSentAt: null,
+        user: { notificationLevel: 'MEDIUM' },
       };
       prisma.task.findMany.mockResolvedValue([dueTask]);
       prisma.telegramLink.findUnique.mockResolvedValue(null);
@@ -220,8 +246,50 @@ describe('TelegramService', () => {
 
       expect(prisma.task.update).toHaveBeenCalledWith({
         where: { id: 'task-2' },
-        data: { reminderSentAt: expect.any(Date) },
+        data: { reminderSentAt: expect.any(Date), reminderCount: { increment: 1 } },
       });
+    });
+
+    it('LOW darajali foydalanuvchi uchun muddatdan 15 daqiqa o\'tmaguncha eslatma yubormaydi', async () => {
+      const sendMessage = jest.fn().mockResolvedValue({});
+      (service as any).bot = { telegram: { sendMessage } };
+
+      const freshlyDueTask = {
+        id: 'task-3',
+        userId: 'user-3',
+        title: 'Hali erta',
+        dueAt: new Date(Date.now() - 60 * 1000),
+        reminderCount: 0,
+        reminderSentAt: null,
+        user: { notificationLevel: 'LOW' },
+      };
+      prisma.task.findMany.mockResolvedValue([freshlyDueTask]);
+
+      await service.sendDueReminders();
+
+      expect(sendMessage).not.toHaveBeenCalled();
+      expect(prisma.task.update).not.toHaveBeenCalled();
+    });
+
+    it('HIGH darajali foydalanuvchi uchun oxirgi eslatmadan 15 daqiqa o\'tmasa qayta yubormaydi', async () => {
+      const sendMessage = jest.fn().mockResolvedValue({});
+      (service as any).bot = { telegram: { sendMessage } };
+
+      const recentlyRemindedTask = {
+        id: 'task-4',
+        userId: 'user-4',
+        title: "Ko'p eslatma",
+        dueAt: new Date(Date.now() - 20 * 60 * 1000),
+        reminderCount: 1,
+        reminderSentAt: new Date(Date.now() - 60 * 1000),
+        user: { notificationLevel: 'HIGH' },
+      };
+      prisma.task.findMany.mockResolvedValue([recentlyRemindedTask]);
+
+      await service.sendDueReminders();
+
+      expect(sendMessage).not.toHaveBeenCalled();
+      expect(prisma.task.update).not.toHaveBeenCalled();
     });
   });
 

@@ -7,13 +7,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum NotificationLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  timezone     String   @default("Asia/Tashkent")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                String            @id @default(uuid())
+  email             String            @unique
+  passwordHash      String
+  timezone          String            @default("Asia/Tashkent")
+  notificationLevel NotificationLevel @default(MEDIUM)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
   tasks              Task[]
   xpTransactions     XPTransaction[]
@@ -34,6 +41,7 @@ model Task {
   status          TaskStatus @default(PENDING)
   completedAt     DateTime?
   reminderSentAt  DateTime?
+  reminderCount   Int       @default(0)
   clientUpdatedAt DateTime?
   version         Int       @default(1)
   deletedAt       DateTime?

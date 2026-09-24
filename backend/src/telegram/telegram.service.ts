@@ -12,10 +12,24 @@ import * as crypto from 'crypto';
 import { Telegraf } from 'telegraf';
 import { PrismaService } from '../prisma/prisma.service';
 import { TasksService } from '../tasks/tasks.service';
-import { TaskStatus } from '@prisma/client';
+import { NotificationLevel, TaskStatus } from '@prisma/client';
 import type { Task } from '@prisma/client';
 
-const LINK_TOKEN_TTL_MS = 10 * 60 * 1000;
+const LINK_TOKEN_TTL_MS = 30 * 60 * 1000;
+
+/**
+ * Bildirishnoma darajasiga qarab eslatma qachon va necha marta yuborilishini
+ * belgilaydi: LOW — muddatdan 15 daqiqa keyin, bir marta; MEDIUM — muddati
+ * kelganda, bir marta; HIGH — muddati kelganda va har 15 daqiqada, 3 martagacha.
+ */
+const REMINDER_CADENCE: Record<
+  NotificationLevel,
+  { maxReminders: number; initialDelayMs: number; repeatIntervalMs: number }
+> = {
+  LOW: { maxReminders: 1, initialDelayMs: 15 * 60 * 1000, repeatIntervalMs: 0 },
+  MEDIUM: { maxReminders: 1, initialDelayMs: 0, repeatIntervalMs: 0 },
+  HIGH: { maxReminders: 3, initialDelayMs: 0, repeatIntervalMs: 15 * 60 * 1000 },
+};
 
 @Injectable()
 export class TelegramService implements OnModuleInit, OnModuleDestroy {
@@ -84,7 +98,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         await ctx.reply(
           "✅ Hisobingiz muvaffaqiyatli bog'landi! Endi eslatmalarni shu yerda olasiz.",
         );
-      } catch {
+      } catch (err) {
+        this.logger.warn(
+          `Telegram link muvaffaqiyatsiz (chat ${ctx.chat.id}): ${(err as Error).message}`,
+        );
         await ctx.reply(
           "Havola eskirgan yoki noto'g'ri. Ilovada \"Telegram bilan bog'lash\"ni qaytadan bosib ko'ring.",
         );
@@ -151,6 +168,12 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         where: { token },
         data: { usedAt: new Date() },
       }),
+      // Bu Telegram chat avval boshqa foydalanuvchiga bog'langan bo'lishi mumkin
+      // (masalan sinov paytida) — telegramChatId ustunidagi @unique cheklov
+      // upsert'ni buzmasligi uchun eski bog'lanishni oldindan tozalaymiz.
+      this.prisma.telegramLink.deleteMany({
+        where: { telegramChatId: chatId, userId: { not: record.userId } },
+      }),
       this.prisma.telegramLink.upsert({
         where: { userId: record.userId },
         create: { userId: record.userId, telegramChatId: chatId },
@@ -204,21 +227,44 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     await this.sendTaskReminder(userId, task);
   }
 
-  /** Har daqiqada muddati kelgan, hali eslatma yuborilmagan vazifalarni tekshiradi. */
+  /**
+   * Har daqiqada muddati kelgan vazifalarni tekshiradi va foydalanuvchining
+   * bildirishnoma darajasiga (LOW/MEDIUM/HIGH) mos keladigan jadval bo'yicha
+   * Telegram eslatmasini yuboradi.
+   */
   @Cron(CronExpression.EVERY_MINUTE)
   async sendDueReminders(): Promise<void> {
     if (!this.bot) return;
 
-    const dueTasks = await this.prisma.task.findMany({
+    const maxReminders = Math.max(
+      ...Object.values(REMINDER_CADENCE).map((c) => c.maxReminders),
+    );
+
+    const candidates = await this.prisma.task.findMany({
       where: {
         status: TaskStatus.PENDING,
         deletedAt: null,
-        reminderSentAt: null,
         dueAt: { not: null, lte: new Date() },
+        reminderCount: { lt: maxReminders },
       },
+      include: { user: { select: { notificationLevel: true } } },
     });
 
-    for (const task of dueTasks) {
+    const now = new Date();
+
+    for (const task of candidates) {
+      const cadence = REMINDER_CADENCE[task.user.notificationLevel];
+
+      if (task.reminderCount === 0) {
+        const dueSinceMs = now.getTime() - task.dueAt!.getTime();
+        if (dueSinceMs < cadence.initialDelayMs) continue;
+      } else {
+        if (task.reminderCount >= cadence.maxReminders) continue;
+        const sinceLastMs =
+          now.getTime() - (task.reminderSentAt?.getTime() ?? 0);
+        if (sinceLastMs < cadence.repeatIntervalMs) continue;
+      }
+
       try {
         await this.sendTaskReminder(task.userId, task);
       } catch (err) {
@@ -228,7 +274,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       } finally {
         await this.prisma.task.update({
           where: { id: task.id },
-          data: { reminderSentAt: new Date() },
+          data: { reminderSentAt: now, reminderCount: { increment: 1 } },
         });
       }
     }
