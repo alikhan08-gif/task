@@ -12,6 +12,7 @@ import {
   Manrope_800ExtraBold,
 } from '@expo-google-fonts/manrope';
 import { AuthProvider } from './src/api/AuthContext';
+import { TasksProvider } from './src/api/TasksContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { colors } from './src/theme/colors';
 
@@ -35,10 +36,12 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <NavigationContainer>
-          <RootNavigator />
-          <StatusBar style="dark" />
-        </NavigationContainer>
+        <TasksProvider>
+          <NavigationContainer>
+            <RootNavigator />
+            <StatusBar style="dark" />
+          </NavigationContainer>
+        </TasksProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

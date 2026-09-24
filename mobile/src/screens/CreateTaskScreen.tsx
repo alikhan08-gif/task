@@ -1,14 +1,53 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, radii, spacing } from '../theme/colors';
 import { BackIcon } from '../components/icons';
+import { useTasks } from '../api/TasksContext';
+import { formatDateInput, parseDateTimeInputs } from '../utils/date';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateTask'>;
 
 export function CreateTaskScreen({ navigation }: Props) {
+  const { createTask } = useTasks();
   const [reminderOn, setReminderOn] = useState(true);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [dateStr, setDateStr] = useState(formatDateInput(new Date()));
+  const [timeStr, setTimeStr] = useState('14:00');
+  const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const onSave = async () => {
+    if (!title.trim()) {
+      setFormError('Sarlavha kiritilishi shart');
+      return;
+    }
+    const dueAt = parseDateTimeInputs(dateStr, timeStr) ?? undefined;
+    setIsSaving(true);
+    setFormError(null);
+    const ok = await createTask({
+      title: title.trim(),
+      description: description.trim() || undefined,
+      dueAt,
+    });
+    setIsSaving(false);
+    if (ok) {
+      navigation.goBack();
+    } else {
+      setFormError("Vazifani saqlab bo'lmadi. Qayta urinib ko'ring.");
+    }
+  };
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -30,6 +69,8 @@ export function CreateTaskScreen({ navigation }: Props) {
             style={styles.input}
             placeholder="Masalan: Ingliz tili darsi"
             placeholderTextColor={colors.textMuted}
+            value={title}
+            onChangeText={setTitle}
           />
         </View>
 
@@ -41,17 +82,19 @@ export function CreateTaskScreen({ navigation }: Props) {
             placeholderTextColor={colors.textMuted}
             multiline
             numberOfLines={3}
+            value={description}
+            onChangeText={setDescription}
           />
         </View>
 
         <View style={styles.row}>
           <View style={[styles.field, { flex: 1 }]}>
             <Text style={styles.label}>Sana</Text>
-            <TextInput style={styles.input} defaultValue="24.09.2026" />
+            <TextInput style={styles.input} value={dateStr} onChangeText={setDateStr} placeholder="DD.MM.YYYY" />
           </View>
           <View style={[styles.field, { flex: 1 }]}>
             <Text style={styles.label}>Vaqt</Text>
-            <TextInput style={styles.input} defaultValue="14:00" />
+            <TextInput style={styles.input} value={timeStr} onChangeText={setTimeStr} placeholder="HH:MM" />
           </View>
         </View>
 
@@ -64,14 +107,17 @@ export function CreateTaskScreen({ navigation }: Props) {
             <View style={[styles.toggleThumb, reminderOn ? { right: 3 } : { left: 3 }]} />
           </View>
         </Pressable>
+
+        {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
       </ScrollView>
 
       <View style={styles.footer}>
         <Pressable
           style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
-          onPress={() => navigation.goBack()}
+          onPress={onSave}
+          disabled={isSaving}
         >
-          <Text style={styles.primaryBtnText}>Saqlash</Text>
+          {isSaving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryBtnText}>Saqlash</Text>}
         </Pressable>
         <Pressable
           style={({ pressed }) => [styles.ghostBtn, pressed && styles.pressed]}
@@ -175,6 +221,11 @@ const styles = StyleSheet.create({
     height: 19,
     borderRadius: radii.round,
     backgroundColor: '#FFFFFF',
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#B4453A',
+    fontWeight: '600',
   },
   footer: {
     gap: spacing.sm + 2,

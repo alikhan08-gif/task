@@ -1,24 +1,41 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable, FlatList, SafeAreaView } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, Pressable, FlatList, SafeAreaView, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, radii, spacing } from '../theme/colors';
 import { BellIcon, FlameIcon, PlusIcon, StarIcon } from '../components/icons';
 import { TaskRow } from '../components/TaskRow';
-import { todayTasks } from '../data/mock';
 import { useAuth } from '../api/AuthContext';
+import { useTasks } from '../api/TasksContext';
+import { formatHeaderDate, isSameCalendarDay } from '../utils/date';
+import { confirmDestructive } from '../utils/confirm';
 import type { AppNavigationProp } from '../navigation/types';
+import type { Task } from '../api/client';
 
 export function HomeScreen() {
   const navigation = useNavigation<AppNavigationProp>();
   const { profile } = useAuth();
+  const { tasks, isLoading, error, completeTask, deleteTask } = useTasks();
   const firstName = profile?.email.split('@')[0] ?? 'foydalanuvchi';
   const streak = profile?.streak.current ?? 0;
+  const xp = profile?.xp ?? 0;
+
+  const today = new Date();
+  const todayTasks = useMemo(
+    () => tasks.filter((t) => !t.dueAt || isSameCalendarDay(new Date(t.dueAt), today)),
+    [tasks],
+  );
+
+  const onLongPressTask = (task: Task) => {
+    confirmDestructive("Vazifani o'chirish", `"${task.title}" o'chirilsinmi?`, "O'chirish", () =>
+      deleteTask(task.id),
+    );
+  };
 
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.dateText}>Payshanba, 24-sentyabr</Text>
+          <Text style={styles.dateText}>{formatHeaderDate(today)}</Text>
           <Text style={styles.heading}>Xayrli tong, {firstName}</Text>
         </View>
         <View style={styles.iconBtn}>
@@ -39,7 +56,7 @@ export function HomeScreen() {
             <StarIcon size={16} />
             <Text style={styles.statLabel}>XP</Text>
           </View>
-          <Text style={styles.statValue}>240</Text>
+          <Text style={styles.statValue}>{xp}</Text>
         </View>
       </View>
 
@@ -51,13 +68,21 @@ export function HomeScreen() {
           </Pressable>
         </View>
 
-        <FlatList
-          data={todayTasks}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ gap: spacing.md }}
-          renderItem={({ item }) => <TaskRow task={item} variant="inline" />}
-          ListEmptyComponent={<Text style={styles.emptyText}>Bugun uchun vazifa yo'q</Text>}
-        />
+        {isLoading && tasks.length === 0 ? (
+          <ActivityIndicator color={colors.accent} style={{ marginTop: spacing.xl }} />
+        ) : error ? (
+          <Text style={styles.errorText}>{error}</Text>
+        ) : (
+          <FlatList
+            data={todayTasks}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ gap: spacing.md, paddingBottom: 80 }}
+            renderItem={({ item }) => (
+              <TaskRow task={item} variant="inline" onToggle={completeTask} onPress={onLongPressTask} />
+            )}
+            ListEmptyComponent={<Text style={styles.emptyText}>Bugun uchun vazifa yo'q</Text>}
+          />
+        )}
       </View>
 
       <Pressable
@@ -162,6 +187,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginTop: spacing.xl,
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#B4453A',
+    fontWeight: '600',
+    marginTop: spacing.lg,
   },
   fab: {
     position: 'absolute',

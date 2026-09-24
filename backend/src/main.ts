@@ -19,7 +19,9 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('TimeUp API')
-    .setDescription('Task, XP va streak boshqaruvi uchun backend API (Phase 1 MVP)')
+    .setDescription(
+      'Task, XP va streak boshqaruvi uchun backend API (Phase 1 MVP)',
+    )
     .setVersion('1.0')
     .addBearerAuth()
     .build();

@@ -1,56 +1,121 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable, FlatList, SafeAreaView } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  FlatList,
+  SafeAreaView,
+  ActivityIndicator,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, radii, spacing } from '../theme/colors';
 import { PlusIcon } from '../components/icons';
 import { TaskRow } from '../components/TaskRow';
-import { todayTasks, weekDays } from '../data/mock';
+import { useTasks } from '../api/TasksContext';
+import { addDays, formatWeekdayLong, formatDayShort, isSameCalendarDay, startOfWeek } from '../utils/date';
+import { confirmDestructive } from '../utils/confirm';
 import type { AppNavigationProp } from '../navigation/types';
+import type { Task } from '../api/client';
 
 export function WeeklyScreen() {
   const navigation = useNavigation<AppNavigationProp>();
+  const { tasks, isLoading, error, completeTask, deleteTask } = useTasks();
+  const today = useMemo(() => new Date(), []);
+  const [selectedDate, setSelectedDate] = useState(today);
+
+  const weekStart = useMemo(() => startOfWeek(today), [today]);
+  const weekDates = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const weekEnd = weekDates[6];
+
+  const dayTasks = useMemo(
+    () =>
+      tasks.filter(
+        (t) =>
+          (t.dueAt && isSameCalendarDay(new Date(t.dueAt), selectedDate)) ||
+          (!t.dueAt && isSameCalendarDay(today, selectedDate)),
+      ),
+    [tasks, selectedDate, today],
+  );
+
+  const hasTasksOn = (date: Date) => tasks.some((t) => t.dueAt && isSameCalendarDay(new Date(t.dueAt), date));
+
+  const onLongPressTask = (task: Task) => {
+    confirmDestructive("Vazifani o'chirish", `"${task.title}" o'chirilsinmi?`, "O'chirish", () =>
+      deleteTask(task.id),
+    );
+  };
+
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.headerBlock}>
         <Text style={styles.heading}>Haftalik reja</Text>
-        <Text style={styles.subheading}>22–28 sentyabr, 2026</Text>
+        <Text style={styles.subheading}>
+          {weekStart.getDate()}–{weekEnd.getDate()}{' '}
+          {['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentyabr', 'oktyabr', 'noyabr', 'dekabr'][weekEnd.getMonth()]}
+          , {weekEnd.getFullYear()}
+        </Text>
       </View>
 
       <View style={styles.dayStrip}>
-        {weekDays.map((day) => (
-          <View
-            key={`${day.label}-${day.num}`}
-            style={[styles.dayCell, day.today && { backgroundColor: colors.accent }]}
-          >
-            <Text style={[styles.dayLabel, day.today && { color: 'rgba(255,255,255,0.75)' }]}>
-              {day.label}
-            </Text>
-            <Text style={[styles.dayNum, day.today && { color: '#FFFFFF' }]}>{day.num}</Text>
-            <View
-              style={[
-                styles.dayDot,
-                {
-                  backgroundColor: day.today ? '#FFFFFF' : day.hasTasks ? colors.accent : colors.border,
-                },
-              ]}
-            />
-          </View>
-        ))}
+        {weekDates.map((date) => {
+          const { label, num } = formatDayShort(date);
+          const isToday = isSameCalendarDay(date, today);
+          const isSelected = isSameCalendarDay(date, selectedDate);
+          return (
+            <Pressable
+              key={date.toISOString()}
+              onPress={() => setSelectedDate(date)}
+              style={[styles.dayCell, isSelected && { backgroundColor: colors.accent }]}
+            >
+              <Text style={[styles.dayLabel, isSelected && { color: 'rgba(255,255,255,0.75)' }]}>{label}</Text>
+              <Text
+                style={[
+                  styles.dayNum,
+                  isSelected && { color: '#FFFFFF' },
+                  isToday && !isSelected && { color: colors.accent },
+                ]}
+              >
+                {num}
+              </Text>
+              <View
+                style={[
+                  styles.dayDot,
+                  {
+                    backgroundColor: isSelected
+                      ? '#FFFFFF'
+                      : hasTasksOn(date)
+                        ? colors.accent
+                        : colors.border,
+                  },
+                ]}
+              />
+            </Pressable>
+          );
+        })}
       </View>
 
       <View style={styles.selectedDayRow}>
         <View style={styles.dot} />
-        <Text style={styles.selectedDayText}>Payshanba, 24-sentyabr</Text>
+        <Text style={styles.selectedDayText}>{formatWeekdayLong(selectedDate, selectedDate.getDate())}</Text>
       </View>
 
-      <FlatList
-        data={todayTasks}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => <TaskRow task={item} variant="inline" />}
-        ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
-        ListEmptyComponent={<Text style={styles.emptyText}>Bu kun uchun vazifa yo'q</Text>}
-      />
+      {isLoading && tasks.length === 0 ? (
+        <ActivityIndicator color={colors.accent} style={{ marginTop: spacing.xl }} />
+      ) : error ? (
+        <Text style={styles.errorText}>{error}</Text>
+      ) : (
+        <FlatList
+          data={dayTasks}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <TaskRow task={item} variant="inline" onToggle={completeTask} onPress={onLongPressTask} />
+          )}
+          ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
+          ListEmptyComponent={<Text style={styles.emptyText}>Bu kun uchun vazifa yo'q</Text>}
+        />
+      )}
 
       <Pressable
         style={({ pressed }) => [styles.fab, pressed && { opacity: 0.9 }]}
@@ -140,6 +205,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginTop: spacing.xl,
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#B4453A',
+    fontWeight: '600',
+    marginTop: spacing.xl,
+    marginHorizontal: spacing.xxl,
   },
   fab: {
     position: 'absolute',

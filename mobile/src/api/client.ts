@@ -52,7 +52,28 @@ export type ProfileResponse = {
   email: string;
   timezone: string;
   createdAt: string;
+  xp: number;
   streak: { current: number; longest: number };
+};
+
+export type TaskStatus = 'PENDING' | 'COMPLETED' | 'MISSED';
+
+export type Task = {
+  id: string;
+  userId: string;
+  title: string;
+  description: string | null;
+  dueAt: string | null;
+  status: TaskStatus;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateTaskInput = {
+  title: string;
+  description?: string;
+  dueAt?: string;
 };
 
 export const api = {
@@ -67,4 +88,14 @@ export const api = {
       body: JSON.stringify({ email, password }),
     }),
   profile: (token: string) => request<ProfileResponse>('/profile', {}, token),
+
+  listTasks: (token: string) => request<Task[]>('/tasks', {}, token),
+  createTask: (token: string, input: CreateTaskInput) =>
+    request<Task>('/tasks', { method: 'POST', body: JSON.stringify(input) }, token),
+  updateTask: (token: string, id: string, input: Partial<CreateTaskInput>) =>
+    request<Task>(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(input) }, token),
+  completeTask: (token: string, id: string) =>
+    request<Task>(`/tasks/${id}/complete`, { method: 'POST' }, token),
+  deleteTask: (token: string, id: string) =>
+    request<{ id: string; deleted: boolean }>(`/tasks/${id}`, { method: 'DELETE' }, token),
 };

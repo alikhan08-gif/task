@@ -24,4 +24,13 @@ API manzili `src/api/client.ts` faylida hardcoded (`http://localhost:3000/api/v1
 
 ## Holat
 
-Auth va Profile real backend API orqali ishlaydi. Task CRUD hozircha mock ma'lumot bilan (UI to'liq tayyor) — keyingi bosqichda `src/api/client.ts`ga tasks endpointlari qo'shilib, `src/data/mock.ts` o'rniga real so'rovlar ulanadi.
+Hammasi real backend API orqali ishlaydi — mock ma'lumot yo'q:
+
+- Auth (register/login), Profile (email, timezone, XP, streak)
+- Vazifalar: yaratish, ro'yxat (kunlik/haftalik guruhlash), bajarish (checkbox — XP va streak'ni real vaqtda yangilaydi), o'chirish (uzoq bosish → tasdiqlash)
+- Loading/error/empty holatlar har bir ekranda
+- Haftalik reja — kun tanlash, real hafta (Dushanba–Yakshanba)
+
+`npx tsc --noEmit` toza, backend'ning 26 ta testi o'tgan, va to'liq oqim (ro'yxatdan o'tish → vazifa yaratish → bajarish → o'chirish) headless brauzerda avtomatik tekshirilgan.
+
+**Keyingi bosqich:** Telegram bot, push-bildirishnoma, offline sinxronizatsiya, AI rejalashtiruvchi (`../ARCHITECTURE.md`ga qarang).

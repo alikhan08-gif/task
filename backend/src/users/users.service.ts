@@ -26,11 +26,16 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException('Foydalanuvchi topilmadi');
     }
+    const xpSum = await this.prisma.xPTransaction.aggregate({
+      where: { userId },
+      _sum: { amount: true },
+    });
     return {
       id: user.id,
       email: user.email,
       timezone: user.timezone,
       createdAt: user.createdAt,
+      xp: xpSum._sum.amount ?? 0,
       streak: user.streak
         ? {
             current: user.streak.currentStreak,

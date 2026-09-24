@@ -1,48 +1,59 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { colors, radii, spacing } from '../theme/colors';
 import { CheckIcon } from './icons';
-import type { MockTask } from '../data/mock';
+import { formatTime } from '../utils/date';
+import type { Task } from '../api/client';
 
 type Props = {
-  task: MockTask;
+  task: Task;
   variant?: 'inline' | 'timeline';
+  onToggle?: (id: string) => void;
+  onPress?: (task: Task) => void;
 };
 
-export function TaskRow({ task, variant = 'inline' }: Props) {
+export function TaskRow({ task, variant = 'inline', onToggle, onPress }: Props) {
+  const done = task.status === 'COMPLETED';
+  const time = formatTime(task.dueAt);
+
   const card = (
-    <View style={styles.card}>
-      <View
+    <Pressable
+      onPress={() => onPress?.(task)}
+      onLongPress={onPress ? () => onPress(task) : undefined}
+      style={styles.card}
+    >
+      <Pressable
+        onPress={() => !done && onToggle?.(task.id)}
+        accessibilityLabel={done ? 'Bajarilgan' : "Bajarilgan deb belgilash"}
+        hitSlop={8}
         style={[
           styles.checkCircle,
           {
-            backgroundColor: task.done ? colors.accent : colors.surface,
-            borderColor: task.done ? colors.accent : colors.border,
+            backgroundColor: done ? colors.accent : colors.surface,
+            borderColor: done ? colors.accent : colors.border,
           },
         ]}
       >
-        <CheckIcon size={13} color={task.done ? '#FFFFFF' : 'transparent'} />
-      </View>
+        <CheckIcon size={13} color={done ? '#FFFFFF' : 'transparent'} />
+      </Pressable>
       <View style={styles.textBlock}>
         <Text
           numberOfLines={1}
-          style={[
-            styles.title,
-            { color: task.done ? colors.textMuted : colors.text },
-            task.done && styles.strike,
-          ]}
+          style={[styles.title, { color: done ? colors.textMuted : colors.text }, done && styles.strike]}
         >
           {task.title}
         </Text>
-        <Text style={styles.subtitle}>{variant === 'timeline' ? task.duration : task.time}</Text>
+        <Text style={styles.subtitle} numberOfLines={1}>
+          {variant === 'timeline' ? (task.description || (done ? 'Bajarildi' : "Bajarilmagan")) : time}
+        </Text>
       </View>
-    </View>
+    </Pressable>
   );
 
   if (variant === 'timeline') {
     return (
       <View style={styles.timelineRow}>
-        <Text style={styles.timeColumn}>{task.time}</Text>
+        <Text style={styles.timeColumn}>{time === "Vaqt yo'q" ? '—' : time}</Text>
         {card}
       </View>
     );

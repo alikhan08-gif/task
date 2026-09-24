@@ -28,7 +28,7 @@ export function ProfileScreen() {
 
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>240</Text>
+            <Text style={styles.statValue}>{profile?.xp ?? 0}</Text>
             <Text style={styles.statLabel}>XP</Text>
           </View>
           <View style={styles.statCard}>
