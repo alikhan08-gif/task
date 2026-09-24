@@ -152,4 +152,26 @@ describe('TimeUp API (e2e)', () => {
       res.body.find((t: { id: string }) => t.id === taskId),
     ).toBeUndefined();
   });
+
+  it('tokensiz /telegram/link chaqirilsa 401 qaytaradi', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/telegram/link')
+      .expect(401);
+  });
+
+  it('bot sozlanmagan muhitda /telegram/link 400 qaytaradi', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/telegram/link')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(400);
+  });
+
+  it('profilda telegramLinked maydoni bor va false', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/profile')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    expect(res.body.telegramLinked).toBe(false);
+  });
 });

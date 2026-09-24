@@ -21,7 +21,7 @@ export class UsersService {
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { streak: true },
+      include: { streak: true, telegramLink: true },
     });
     if (!user) {
       throw new NotFoundException('Foydalanuvchi topilmadi');
@@ -36,6 +36,7 @@ export class UsersService {
       timezone: user.timezone,
       createdAt: user.createdAt,
       xp: xpSum._sum.amount ?? 0,
+      telegramLinked: Boolean(user.telegramLink),
       streak: user.streak
         ? {
             current: user.streak.currentStreak,

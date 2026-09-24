@@ -53,6 +53,7 @@ export type ProfileResponse = {
   timezone: string;
   createdAt: string;
   xp: number;
+  telegramLinked: boolean;
   streak: { current: number; longest: number };
 };
 
@@ -98,4 +99,7 @@ export const api = {
     request<Task>(`/tasks/${id}/complete`, { method: 'POST' }, token),
   deleteTask: (token: string, id: string) =>
     request<{ id: string; deleted: boolean }>(`/tasks/${id}`, { method: 'DELETE' }, token),
+
+  telegramLink: (token: string) =>
+    request<{ token: string; deepLink: string }>('/telegram/link', { method: 'POST' }, token),
 };

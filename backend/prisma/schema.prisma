@@ -15,10 +15,11 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  tasks         Task[]
-  xpTransactions XPTransaction[]
-  streak        Streak?
-  telegramLink  TelegramLink?
+  tasks              Task[]
+  xpTransactions     XPTransaction[]
+  streak             Streak?
+  telegramLink       TelegramLink?
+  telegramLinkTokens TelegramLinkToken[]
 
   @@map("users")
 }
@@ -77,4 +78,18 @@ model TelegramLink {
   linkedAt     DateTime @default(now())
 
   @@map("telegram_links")
+}
+
+/// Foydalanuvchi mobil ilovada "Telegram bilan bog'lash"ni bosganda yaratiladigan
+/// bir martalik token. Bot /start <token> qabul qilganda ishlatiladi va o'chiriladi.
+model TelegramLinkToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@map("telegram_link_tokens")
 }

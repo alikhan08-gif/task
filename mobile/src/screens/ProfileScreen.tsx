@@ -1,13 +1,37 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView, SafeAreaView, ActivityIndicator, Linking } from 'react-native';
 import { colors, radii, spacing } from '../theme/colors';
 import { BellIcon, ChevronRightIcon, GlobeIcon, LogoutIcon, SendIcon } from '../components/icons';
 import { useAuth } from '../api/AuthContext';
+import { api, ApiError } from '../api/client';
+import { notify } from '../utils/notify';
 
 export function ProfileScreen() {
-  const { profile, logout } = useAuth();
+  const { profile, accessToken, logout, refreshProfile } = useAuth();
   const email = profile?.email ?? '—';
   const initials = email.slice(0, 2).toUpperCase();
+  const [isLinking, setIsLinking] = useState(false);
+
+  const onTelegramPress = async () => {
+    if (!accessToken || profile?.telegramLinked) return;
+    setIsLinking(true);
+    try {
+      const { deepLink } = await api.telegramLink(accessToken);
+      await Linking.openURL(deepLink);
+      notify(
+        "Telegram ochildi",
+        "Botda \"Start\" tugmasini bosing. Bog'langach, shu ekranga qaytib \"yangilash\" uchun boshqa varaqqa o'tib qayting.",
+      );
+      setTimeout(refreshProfile, 4000);
+    } catch (err) {
+      notify(
+        "Bog'lab bo'lmadi",
+        err instanceof ApiError ? err.message : "Telegram bot hozircha sozlanmagan.",
+      );
+    } finally {
+      setIsLinking(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -66,16 +90,26 @@ export function ProfileScreen() {
             <ChevronRightIcon />
           </View>
 
-          <View style={styles.settingsRow}>
+          <Pressable
+            style={({ pressed }) => [styles.settingsRow, pressed && { opacity: 0.7 }]}
+            onPress={onTelegramPress}
+            disabled={isLinking || profile?.telegramLinked}
+          >
             <View style={styles.settingsIcon}>
               <SendIcon size={17} />
             </View>
             <View style={{ flexGrow: 1, flexShrink: 1 }}>
               <Text style={styles.settingsTitle}>Telegram bot</Text>
-              <Text style={styles.settingsSubtitle}>Bog'lanmagan</Text>
+              <Text style={styles.settingsSubtitle}>
+                {profile?.telegramLinked ? "Bog'langan" : "Bog'lanmagan — bosib ulang"}
+              </Text>
             </View>
-            <ChevronRightIcon />
-          </View>
+            {isLinking ? (
+              <ActivityIndicator size="small" color={colors.accent} />
+            ) : profile?.telegramLinked ? null : (
+              <ChevronRightIcon />
+            )}
+          </Pressable>
 
           <Pressable
             style={({ pressed }) => [styles.settingsRow, pressed && { opacity: 0.7 }]}
