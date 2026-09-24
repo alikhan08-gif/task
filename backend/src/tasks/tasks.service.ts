@@ -55,6 +55,7 @@ export class TasksService {
         title: dto.title,
         description: dto.description,
         dueAt: dto.dueAt ? new Date(dto.dueAt) : undefined,
+        reminderSentAt: dto.dueAt ? null : undefined,
         version: { increment: 1 },
       },
     });

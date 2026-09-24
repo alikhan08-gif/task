@@ -26,6 +26,10 @@ describe('TelegramService', () => {
         findUnique: jest.fn(),
         upsert: jest.fn(),
       },
+      task: {
+        findMany: jest.fn(),
+        update: jest.fn(),
+      },
       $transaction: jest.fn((ops) => Promise.all(ops)),
     };
 
@@ -151,6 +155,73 @@ describe('TelegramService', () => {
       expect(
         (service as any).verifyTaskCallback('chat-1', 'task-1', 'deadbeef00'),
       ).toBe(false);
+    });
+  });
+
+  describe('sendDueReminders', () => {
+    it("bot ishga tushmagan bo'lsa hech narsa so'ramaydi", async () => {
+      await service.sendDueReminders();
+      expect(prisma.task.findMany).not.toHaveBeenCalled();
+    });
+
+    it('muddati kelgan vazifalar uchun eslatma yuboradi va reminderSentAt belgilaydi', async () => {
+      const sendMessage = jest.fn().mockResolvedValue({});
+      (service as any).bot = { telegram: { sendMessage } };
+
+      const dueTask = {
+        id: 'task-1',
+        userId: 'user-1',
+        title: 'Sport zali',
+        dueAt: new Date(Date.now() - 1000),
+      };
+      prisma.task.findMany.mockResolvedValue([dueTask]);
+      prisma.telegramLink.findUnique.mockResolvedValue({
+        userId: 'user-1',
+        telegramChatId: 'chat-1',
+      });
+      prisma.task.update.mockResolvedValue({});
+
+      await service.sendDueReminders();
+
+      expect(prisma.task.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: 'PENDING',
+            deletedAt: null,
+            reminderSentAt: null,
+          }),
+        }),
+      );
+      expect(sendMessage).toHaveBeenCalledWith(
+        'chat-1',
+        expect.stringContaining('Sport zali'),
+        expect.anything(),
+      );
+      expect(prisma.task.update).toHaveBeenCalledWith({
+        where: { id: 'task-1' },
+        data: { reminderSentAt: expect.any(Date) },
+      });
+    });
+
+    it("bog'lanmagan foydalanuvchi bo'lsa ham reminderSentAt'ni belgilab qo'yadi (takror urinmaslik uchun)", async () => {
+      (service as any).bot = { telegram: { sendMessage: jest.fn() } };
+
+      const dueTask = {
+        id: 'task-2',
+        userId: 'user-2',
+        title: 'Bog\'lanmagan',
+        dueAt: new Date(Date.now() - 1000),
+      };
+      prisma.task.findMany.mockResolvedValue([dueTask]);
+      prisma.telegramLink.findUnique.mockResolvedValue(null);
+      prisma.task.update.mockResolvedValue({});
+
+      await service.sendDueReminders();
+
+      expect(prisma.task.update).toHaveBeenCalledWith({
+        where: { id: 'task-2' },
+        data: { reminderSentAt: expect.any(Date) },
+      });
     });
   });
 

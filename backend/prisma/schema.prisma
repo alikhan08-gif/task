@@ -33,6 +33,7 @@ model Task {
   dueAt           DateTime?
   status          TaskStatus @default(PENDING)
   completedAt     DateTime?
+  reminderSentAt  DateTime?
   clientUpdatedAt DateTime?
   version         Int       @default(1)
   deletedAt       DateTime?

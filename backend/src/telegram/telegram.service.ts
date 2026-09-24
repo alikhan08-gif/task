@@ -7,10 +7,12 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import * as crypto from 'crypto';
 import { Telegraf } from 'telegraf';
 import { PrismaService } from '../prisma/prisma.service';
 import { TasksService } from '../tasks/tasks.service';
+import { TaskStatus } from '@prisma/client';
 import type { Task } from '@prisma/client';
 
 const LINK_TOKEN_TTL_MS = 10 * 60 * 1000;
@@ -200,6 +202,36 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException("Telegram hisobingiz bog'lanmagan");
     }
     await this.sendTaskReminder(userId, task);
+  }
+
+  /** Har daqiqada muddati kelgan, hali eslatma yuborilmagan vazifalarni tekshiradi. */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async sendDueReminders(): Promise<void> {
+    if (!this.bot) return;
+
+    const dueTasks = await this.prisma.task.findMany({
+      where: {
+        status: TaskStatus.PENDING,
+        deletedAt: null,
+        reminderSentAt: null,
+        dueAt: { not: null, lte: new Date() },
+      },
+    });
+
+    for (const task of dueTasks) {
+      try {
+        await this.sendTaskReminder(task.userId, task);
+      } catch (err) {
+        this.logger.error(
+          `Eslatma yuborilmadi (vazifa ${task.id}): ${(err as Error).message}`,
+        );
+      } finally {
+        await this.prisma.task.update({
+          where: { id: task.id },
+          data: { reminderSentAt: new Date() },
+        });
+      }
+    }
   }
 
   async sendTaskReminder(userId: string, task: Task): Promise<void> {
