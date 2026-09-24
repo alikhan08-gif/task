@@ -9,6 +9,13 @@ describe('TelegramService', () => {
   let prisma: any;
 
   beforeEach(() => {
+    // PrismaClient import qilinganda .env'ni avtomatik o'qiydi va process.env'ni
+    // to'ldiradi — ConfigService esa process.env'ni internalConfig'dan ustun qo'yadi,
+    // shuning uchun testlarni mahalliy .env'dagi haqiqiy qiymatlardan mustaqil qilamiz.
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    delete process.env.TELEGRAM_BOT_USERNAME;
+    delete process.env.TELEGRAM_WEBHOOK_SECRET;
+
     prisma = {
       telegramLinkToken: {
         create: jest.fn(),

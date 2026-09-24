@@ -43,14 +43,20 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
     try {
       await this.bot.telegram.deleteWebhook({ drop_pending_updates: true });
-      await this.bot.launch();
-      this.logger.log('Telegram bot polling rejimida ishga tushdi');
     } catch (err) {
       this.logger.error(
         `Telegram botni ishga tushirib bo'lmadi: ${(err as Error).message}`,
       );
       this.bot = null;
+      return;
     }
+
+    // bot.launch() polling rejimida hech qachon resolve bo'lmaydi (faqat stop()da) —
+    // shuning uchun await qilinmaydi, aks holda butun ilova ishga tushishi to'xtab qoladi.
+    this.bot.launch().catch((err: Error) => {
+      this.logger.error(`Telegram bot polling to'xtadi: ${err.message}`);
+    });
+    this.logger.log('Telegram bot polling rejimida ishga tushdi');
   }
 
   async onModuleDestroy() {
