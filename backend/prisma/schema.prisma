@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  timezone     String   @default("Asia/Tashkent")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tasks         Task[]
+  xpTransactions XPTransaction[]
+  streak        Streak?
+  telegramLink  TelegramLink?
+
+  @@map("users")
+}
+
+model Task {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  dueAt           DateTime?
+  status          TaskStatus @default(PENDING)
+  completedAt     DateTime?
+  clientUpdatedAt DateTime?
+  version         Int       @default(1)
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@map("tasks")
+}
+
+enum TaskStatus {
+  PENDING
+  COMPLETED
+  MISSED
+}
+
+model Streak {
+  userId              String    @id
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentStreak       Int       @default(0)
+  longestStreak       Int       @default(0)
+  lastCompletedDate   String?
+  updatedAt           DateTime  @updatedAt
+
+  @@map("streaks")
+}
+
+model XPTransaction {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@map("xp_transactions")
+}
+
+model TelegramLink {
+  userId       String   @id
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  telegramChatId String @unique
+  linkedAt     DateTime @default(now())
+
+  @@map("telegram_links")
+}
