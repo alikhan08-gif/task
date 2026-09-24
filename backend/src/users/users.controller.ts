@@ -1,9 +1,11 @@
 import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, RequestUser } from '../auth/current-user.decorator';
 import { UsersService } from './users.service';
 import { UpdateTimezoneDto } from './dto/update-timezone.dto';
 
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('profile')
 export class UsersController {
