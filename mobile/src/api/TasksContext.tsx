@@ -1,6 +1,12 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { api, ApiError, CreateTaskInput, Task } from './client';
 import { useAuth } from './AuthContext';
+
+// Telegram botdagi "Bajarildi" tugmasi vazifani serverda o'zgartiradi, lekin
+// ilovaga hech qanday push yubormaydi — shuning uchun ilova holatini serverga
+// muntazam moslashtirib turamiz (fon rejimidan qaytganda ham darhol).
+const POLL_INTERVAL_MS = 15000;
 
 type TasksState = {
   tasks: Task[];
@@ -35,6 +41,19 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
     }
   }, [accessToken]);
 
+  // Fon rejimida (poll/AppState) ishlatiladi: ro'yxatni yangilaydi, lekin
+  // yuklanish indikatorini ko'rsatmaydi — ekranda "yaltillash" bo'lmasligi uchun.
+  const silentRefresh = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const result = await api.listTasks(accessToken);
+      setTasks(result);
+      refreshProfile();
+    } catch {
+      // Fon yangilanishida xatoni ko'rsatmaymiz — keyingi urinishda tuzaladi.
+    }
+  }, [accessToken, refreshProfile]);
+
   useEffect(() => {
     if (accessToken) {
       refresh();
@@ -42,6 +61,31 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       setTasks([]);
     }
   }, [accessToken, refresh]);
+
+  const silentRefreshRef = useRef(silentRefresh);
+  silentRefreshRef.current = silentRefresh;
+
+  useEffect(() => {
+    if (!accessToken) return;
+
+    const interval = setInterval(() => {
+      silentRefreshRef.current();
+    }, POLL_INTERVAL_MS);
+
+    const subscription = AppState.addEventListener(
+      'change',
+      (state: AppStateStatus) => {
+        if (state === 'active') {
+          silentRefreshRef.current();
+        }
+      },
+    );
+
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
+  }, [accessToken]);
 
   const createTask = useCallback(
     async (input: CreateTaskInput) => {
