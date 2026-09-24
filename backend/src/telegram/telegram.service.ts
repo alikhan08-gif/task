@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   Logger,
+  NotFoundException,
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
@@ -184,6 +185,21 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       expectedBuf.length === actualBuf.length &&
       crypto.timingSafeEqual(expectedBuf, actualBuf)
     );
+  }
+
+  /** Test/qo'lda eslatma yuborish uchun: taskId orqali vazifani topib egalikni tekshiradi. */
+  async sendReminderForTask(userId: string, taskId: string): Promise<void> {
+    const task = await this.prisma.task.findUnique({ where: { id: taskId } });
+    if (!task || task.deletedAt || task.userId !== userId) {
+      throw new NotFoundException('Vazifa topilmadi');
+    }
+    const link = await this.prisma.telegramLink.findUnique({
+      where: { userId },
+    });
+    if (!link) {
+      throw new BadRequestException("Telegram hisobingiz bog'lanmagan");
+    }
+    await this.sendTaskReminder(userId, task);
   }
 
   async sendTaskReminder(userId: string, task: Task): Promise<void> {
