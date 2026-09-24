@@ -1,5 +1,7 @@
-// Bu demo/sandbox uchun. Productionda API manzili environment o'zgaruvchisidan olinadi.
-const API_BASE_URL = 'http://localhost:3000/api/v1';
+// Mahalliy ishlab chiqish uchun EXPO_PUBLIC_API_URL bilan bekor qilinadi
+// (masalan: EXPO_PUBLIC_API_URL=http://localhost:3000/api/v1 npx expo start).
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? 'https://timeup-backend.onrender.com/api/v1';
 
 export type ApiErrorBody = {
   error: { code: string; message: string | string[]; details: unknown };
