@@ -65,23 +65,3 @@ export function formatTime(iso: string | null): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-export function formatDateInput(date: Date): string {
-  return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
-}
-
-/** "24.09.2026" + "14:00" -> ISO string, yoki noto'g'ri format bo'lsa null. */
-export function parseDateTimeInputs(dateStr: string, timeStr: string): string | null {
-  const dateMatch = dateStr.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-  const timeMatch = timeStr.trim().match(/^(\d{1,2}):(\d{2})$/);
-  if (!dateMatch) return null;
-  const [, dd, mm, yyyy] = dateMatch;
-  let hh = 0;
-  let min = 0;
-  if (timeMatch) {
-    hh = Number(timeMatch[1]);
-    min = Number(timeMatch[2]);
-  }
-  const date = new Date(Number(yyyy), Number(mm) - 1, Number(dd), hh, min, 0, 0);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString();
-}

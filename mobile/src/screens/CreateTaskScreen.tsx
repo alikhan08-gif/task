@@ -12,11 +12,17 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, radii, spacing } from '../theme/colors';
 import { BackIcon } from '../components/icons';
+import { DateTimeField } from '../components/DateTimeField';
 import { useTasks } from '../api/TasksContext';
-import { formatDateInput, formatTime, parseDateTimeInputs } from '../utils/date';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateTask'>;
+
+function defaultDueDate(): Date {
+  const date = new Date();
+  date.setHours(14, 0, 0, 0);
+  return date;
+}
 
 export function CreateTaskScreen({ navigation, route }: Props) {
   const { tasks, createTask, updateTask } = useTasks();
@@ -27,11 +33,8 @@ export function CreateTaskScreen({ navigation, route }: Props) {
   const [reminderOn, setReminderOn] = useState(existingTask?.remindEnabled ?? true);
   const [title, setTitle] = useState(existingTask?.title ?? '');
   const [description, setDescription] = useState(existingTask?.description ?? '');
-  const [dateStr, setDateStr] = useState(
-    existingTask?.dueAt ? formatDateInput(new Date(existingTask.dueAt)) : formatDateInput(new Date()),
-  );
-  const [timeStr, setTimeStr] = useState(
-    existingTask?.dueAt ? formatTime(existingTask.dueAt) : '14:00',
+  const [dueDate, setDueDate] = useState<Date>(
+    existingTask?.dueAt ? new Date(existingTask.dueAt) : defaultDueDate(),
   );
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -41,13 +44,12 @@ export function CreateTaskScreen({ navigation, route }: Props) {
       setFormError('Sarlavha kiritilishi shart');
       return;
     }
-    const dueAt = parseDateTimeInputs(dateStr, timeStr) ?? undefined;
     setIsSaving(true);
     setFormError(null);
     const input = {
       title: title.trim(),
       description: description.trim() || undefined,
-      dueAt,
+      dueAt: dueDate.toISOString(),
       remindEnabled: reminderOn,
     };
     const ok = isEditMode && taskId ? await updateTask(taskId, input) : await createTask(input);
@@ -98,14 +100,30 @@ export function CreateTaskScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.row}>
-          <View style={[styles.field, { flex: 1 }]}>
-            <Text style={styles.label}>Sana</Text>
-            <TextInput style={styles.input} value={dateStr} onChangeText={setDateStr} placeholder="DD.MM.YYYY" />
-          </View>
-          <View style={[styles.field, { flex: 1 }]}>
-            <Text style={styles.label}>Vaqt</Text>
-            <TextInput style={styles.input} value={timeStr} onChangeText={setTimeStr} placeholder="HH:MM" />
-          </View>
+          <DateTimeField
+            label="Sana"
+            mode="date"
+            value={dueDate}
+            onChange={(picked) =>
+              setDueDate((prev) => {
+                const next = new Date(prev);
+                next.setFullYear(picked.getFullYear(), picked.getMonth(), picked.getDate());
+                return next;
+              })
+            }
+          />
+          <DateTimeField
+            label="Vaqt"
+            mode="time"
+            value={dueDate}
+            onChange={(picked) =>
+              setDueDate((prev) => {
+                const next = new Date(prev);
+                next.setHours(picked.getHours(), picked.getMinutes(), 0, 0);
+                return next;
+              })
+            }
+          />
         </View>
 
         <Pressable style={styles.reminderRow} onPress={() => setReminderOn((v) => !v)}>
