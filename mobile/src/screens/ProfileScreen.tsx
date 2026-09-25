@@ -82,7 +82,7 @@ export function ProfileScreen() {
     if (!accessToken) return;
     setIsSavingTimezone(true);
     try {
-      await api.updateTimezone(accessToken, timezone);
+      await api.updateTimezone(timezone);
       await refreshProfile();
       setIsTimezonePickerOpen(false);
       setCustomTimezone('');
@@ -110,7 +110,7 @@ export function ProfileScreen() {
     if (!accessToken) return;
     setIsSavingNotificationLevel(true);
     try {
-      await api.updateNotificationLevel(accessToken, level);
+      await api.updateNotificationLevel(level);
       await refreshProfile();
       setIsNotificationPickerOpen(false);
     } catch (err) {
@@ -127,7 +127,7 @@ export function ProfileScreen() {
     if (!accessToken || profile?.telegramLinked) return;
     setIsLinking(true);
     try {
-      const { deepLink } = await api.telegramLink(accessToken);
+      const { deepLink } = await api.telegramLink();
       await Linking.openURL(deepLink);
       notify(
         "Telegram ochildi",

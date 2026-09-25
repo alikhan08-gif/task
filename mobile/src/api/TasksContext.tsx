@@ -32,7 +32,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await api.listTasks(accessToken);
+      const result = await api.listTasks();
       setTasks(result);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Vazifalarni yuklab bo'lmadi");
@@ -46,7 +46,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
   const silentRefresh = useCallback(async () => {
     if (!accessToken) return;
     try {
-      const result = await api.listTasks(accessToken);
+      const result = await api.listTasks();
       setTasks(result);
       refreshProfile();
     } catch {
@@ -92,7 +92,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       if (!accessToken) return false;
       setError(null);
       try {
-        const created = await api.createTask(accessToken, input);
+        const created = await api.createTask(input);
         setTasks((prev) => [...prev, created]);
         return true;
       } catch (err) {
@@ -108,7 +108,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       if (!accessToken) return false;
       setError(null);
       try {
-        const updated = await api.updateTask(accessToken, id, input);
+        const updated = await api.updateTask(id, input);
         setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
         return true;
       } catch (err) {
@@ -124,7 +124,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       if (!accessToken) return false;
       setError(null);
       try {
-        const updated = await api.completeTask(accessToken, id);
+        const updated = await api.completeTask(id);
         setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
         refreshProfile();
         return true;
@@ -141,7 +141,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       if (!accessToken) return false;
       setError(null);
       try {
-        await api.deleteTask(accessToken, id);
+        await api.deleteTask(id);
         setTasks((prev) => prev.filter((t) => t.id !== id));
         return true;
       } catch (err) {

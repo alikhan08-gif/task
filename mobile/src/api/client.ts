@@ -1,3 +1,5 @@
+import { tokenStore } from './tokenStore';
+
 // Mahalliy ishlab chiqish uchun EXPO_PUBLIC_API_URL bilan bekor qilinadi
 // (masalan: EXPO_PUBLIC_API_URL=http://localhost:3000/api/v1 npx expo start).
 const API_BASE_URL =
@@ -43,10 +45,65 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
   return body as T;
 }
 
-export type AuthResponse = {
-  user: { id: string; email: string; timezone: string; createdAt: string };
+// Access token qisqa umr ko'radi (15 daqiqa). Har bir himoyalangan so'rov shu
+// orqali yuboriladi: 401 kelsa, refresh token bilan avtomatik yangi token
+// olinadi va so'rov bir marta qaytadan urinib ko'riladi — foydalanuvchi buni
+// sezmaydi. Refresh ham muvaffaqiyatsiz bo'lsa, sessiya tozalanadi (AuthContext
+// buni tokenStore orqali kuzatib, kirish ekraniga qaytaradi).
+let refreshInFlight: Promise<void> | null = null;
+
+async function refreshTokens(): Promise<void> {
+  const refreshToken = tokenStore.current?.refreshToken;
+  if (!refreshToken) {
+    throw new ApiError(401, null, "Sessiya tugagan, qaytadan kiring");
+  }
+  const result = await request<AuthTokens>('/auth/refresh', {
+    method: 'POST',
+    body: JSON.stringify({ refreshToken }),
+  });
+  await tokenStore.set(result);
+}
+
+async function authedRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const accessToken = tokenStore.current?.accessToken;
+  if (!accessToken) {
+    throw new ApiError(401, null, 'Tizimga kirilmagan');
+  }
+
+  try {
+    return await request<T>(path, options, accessToken);
+  } catch (err) {
+    if (!(err instanceof ApiError) || err.status !== 401) {
+      throw err;
+    }
+
+    try {
+      if (!refreshInFlight) {
+        refreshInFlight = refreshTokens().finally(() => {
+          refreshInFlight = null;
+        });
+      }
+      await refreshInFlight;
+    } catch {
+      await tokenStore.set(null);
+      throw err;
+    }
+
+    const newAccessToken = tokenStore.current?.accessToken;
+    if (!newAccessToken) {
+      throw err;
+    }
+    return request<T>(path, options, newAccessToken);
+  }
+}
+
+export type AuthTokens = {
   accessToken: string;
   refreshToken: string;
+};
+
+export type AuthResponse = AuthTokens & {
+  user: { id: string; email: string; timezone: string; createdAt: string };
 };
 
 export type NotificationLevel = 'LOW' | 'MEDIUM' | 'HIGH';
@@ -93,31 +150,35 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
-  profile: (token: string) => request<ProfileResponse>('/profile', {}, token),
+  refresh: (refreshToken: string) =>
+    request<AuthTokens>('/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
+    }),
 
-  listTasks: (token: string) => request<Task[]>('/tasks', {}, token),
-  createTask: (token: string, input: CreateTaskInput) =>
-    request<Task>('/tasks', { method: 'POST', body: JSON.stringify(input) }, token),
-  updateTask: (token: string, id: string, input: Partial<CreateTaskInput>) =>
-    request<Task>(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(input) }, token),
-  completeTask: (token: string, id: string) =>
-    request<Task>(`/tasks/${id}/complete`, { method: 'POST' }, token),
-  deleteTask: (token: string, id: string) =>
-    request<{ id: string; deleted: boolean }>(`/tasks/${id}`, { method: 'DELETE' }, token),
+  profile: () => authedRequest<ProfileResponse>('/profile'),
 
-  telegramLink: (token: string) =>
-    request<{ token: string; deepLink: string }>('/telegram/link', { method: 'POST' }, token),
+  listTasks: () => authedRequest<Task[]>('/tasks'),
+  createTask: (input: CreateTaskInput) =>
+    authedRequest<Task>('/tasks', { method: 'POST', body: JSON.stringify(input) }),
+  updateTask: (id: string, input: Partial<CreateTaskInput>) =>
+    authedRequest<Task>(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  completeTask: (id: string) =>
+    authedRequest<Task>(`/tasks/${id}/complete`, { method: 'POST' }),
+  deleteTask: (id: string) =>
+    authedRequest<{ id: string; deleted: boolean }>(`/tasks/${id}`, { method: 'DELETE' }),
 
-  updateTimezone: (token: string, timezone: string) =>
-    request<ProfileResponse>(
-      '/profile/timezone',
-      { method: 'PATCH', body: JSON.stringify({ timezone }) },
-      token,
-    ),
-  updateNotificationLevel: (token: string, notificationLevel: NotificationLevel) =>
-    request<ProfileResponse>(
-      '/profile/notification-level',
-      { method: 'PATCH', body: JSON.stringify({ notificationLevel }) },
-      token,
-    ),
+  telegramLink: () =>
+    authedRequest<{ token: string; deepLink: string }>('/telegram/link', { method: 'POST' }),
+
+  updateTimezone: (timezone: string) =>
+    authedRequest<ProfileResponse>('/profile/timezone', {
+      method: 'PATCH',
+      body: JSON.stringify({ timezone }),
+    }),
+  updateNotificationLevel: (notificationLevel: NotificationLevel) =>
+    authedRequest<ProfileResponse>('/profile/notification-level', {
+      method: 'PATCH',
+      body: JSON.stringify({ notificationLevel }),
+    }),
 };
