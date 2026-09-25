@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api, ApiError, ProfileResponse } from './client';
 import { tokenStore } from './tokenStore';
+import { requestNotificationPermissions } from '../notifications/taskNotifications';
 
 type AuthState = {
   accessToken: string | null;
@@ -90,6 +91,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     [loadProfile],
   );
+
+  // Sessiya (yangi login yoki tiklangan) mavjud bo'lganda telefon
+  // bildirishnoma ruxsatini so'raydi — vazifa eslatmalari shu ruxsatga bog'liq.
+  useEffect(() => {
+    if (accessToken) {
+      requestNotificationPermissions();
+    }
+  }, [accessToken]);
 
   const logout = useCallback(() => {
     tokenStore.set(null);

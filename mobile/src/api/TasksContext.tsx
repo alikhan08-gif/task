@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { AppState, AppStateStatus } from 'react-native';
 import { api, ApiError, CreateTaskInput, Task } from './client';
 import { useAuth } from './AuthContext';
+import { syncTaskNotifications } from '../notifications/taskNotifications';
 
 // Telegram botdagi "Bajarildi" tugmasi vazifani serverda o'zgartiradi, lekin
 // ilovaga hech qanday push yubormaydi — shuning uchun ilova holatini serverga
@@ -61,6 +62,13 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       setTasks([]);
     }
   }, [accessToken, refresh]);
+
+  // Vazifalar ro'yxati o'zgarganda (yaratildi/tahrirlandi/bajarildi/o'chirildi,
+  // yoki fondan yangilandi) telefonning mahalliy bildirishnomalarini shu
+  // holatga moslashtiradi — bu serverdan mustaqil, Telegram bo'lmasa ham ishlaydi.
+  useEffect(() => {
+    syncTaskNotifications(tasks);
+  }, [tasks]);
 
   const silentRefreshRef = useRef(silentRefresh);
   silentRefreshRef.current = silentRefresh;

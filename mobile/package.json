@@ -12,6 +12,7 @@
     "expo": "~57.0.25",
     "expo-font": "^57.0.4",
     "expo-linear-gradient": "^57.0.2",
+    "expo-notifications": "^57.0.21",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-dom": "^19.2.3",
