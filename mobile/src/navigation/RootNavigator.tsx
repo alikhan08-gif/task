@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../api/AuthContext';
 import { LoginScreen } from '../screens/LoginScreen';
 import { CreateTaskScreen } from '../screens/CreateTaskScreen';
+import { FriendsScreen } from '../screens/FriendsScreen';
 import { MainTabs } from './MainTabs';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from './types';
@@ -31,6 +32,7 @@ export function RootNavigator() {
             component={CreateTaskScreen}
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
+          <Stack.Screen name="Friends" component={FriendsScreen} />
         </>
       ) : (
         <Stack.Screen name="Login" component={LoginScreen} />

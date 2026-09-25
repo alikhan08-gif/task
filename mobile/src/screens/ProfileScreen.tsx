@@ -11,11 +11,13 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { colors, radii, spacing } from '../theme/colors';
-import { BellIcon, CheckIcon, ChevronRightIcon, GlobeIcon, LogoutIcon, SendIcon } from '../components/icons';
+import { BellIcon, CheckIcon, ChevronRightIcon, GlobeIcon, LogoutIcon, SendIcon, UsersIcon } from '../components/icons';
 import { useAuth } from '../api/AuthContext';
 import { api, ApiError, NotificationLevel } from '../api/client';
 import { notify } from '../utils/notify';
+import type { AppNavigationProp } from '../navigation/types';
 
 const COMMON_TIMEZONES = [
   'Asia/Tashkent',
@@ -64,6 +66,7 @@ function isValidTimezone(timezone: string): boolean {
 }
 
 export function ProfileScreen() {
+  const navigation = useNavigation<AppNavigationProp>();
   const { profile, accessToken, logout, refreshProfile } = useAuth();
   const email = profile?.email ?? '—';
   const initials = email.slice(0, 2).toUpperCase();
@@ -226,6 +229,20 @@ export function ProfileScreen() {
             ) : profile?.telegramLinked ? null : (
               <ChevronRightIcon />
             )}
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [styles.settingsRow, pressed && { opacity: 0.7 }]}
+            onPress={() => navigation.navigate('Friends')}
+          >
+            <View style={styles.settingsIcon}>
+              <UsersIcon size={17} />
+            </View>
+            <View style={{ flexGrow: 1, flexShrink: 1 }}>
+              <Text style={styles.settingsTitle}>Do'stlar</Text>
+              <Text style={styles.settingsSubtitle}>Do'stlashish va reyting</Text>
+            </View>
+            <ChevronRightIcon />
           </Pressable>
 
           <Pressable

@@ -6,6 +6,7 @@ export type RootStackParamList = {
   Login: undefined;
   Main: undefined;
   CreateTask: { taskId?: string } | undefined;
+  Friends: undefined;
 };
 
 export type MainTabParamList = {

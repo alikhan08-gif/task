@@ -27,6 +27,8 @@ model User {
   streak             Streak?
   telegramLink       TelegramLink?
   telegramLinkTokens TelegramLinkToken[]
+  sentFriendRequests     FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
 
   @@map("users")
 }
@@ -102,4 +104,27 @@ model TelegramLinkToken {
   createdAt DateTime  @default(now())
 
   @@map("telegram_link_tokens")
+}
+
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+/// ACCEPTED holatidagi yozuv ikki foydalanuvchi o'rtasidagi do'stlikni ifodalaydi
+/// (yo'nalishidan qat'i nazar) — alohida "Friendship" jadvali shart emas.
+model FriendRequest {
+  id          String              @id @default(uuid())
+  senderId    String
+  sender      User                @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId  String
+  receiver    User                @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  status      FriendRequestStatus @default(PENDING)
+  createdAt   DateTime            @default(now())
+  respondedAt DateTime?
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+  @@map("friend_requests")
 }

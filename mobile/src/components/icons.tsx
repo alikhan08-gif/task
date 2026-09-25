@@ -148,6 +148,17 @@ export function LogoutIcon({ size = 17, color = '#6B665C', strokeWidth = 1.8 }: 
   );
 }
 
+export function UsersIcon({ size = 17, color = '#2F6F62', strokeWidth = 1.7 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="9" cy="8" r="3" stroke={color} strokeWidth={strokeWidth} />
+      <Path d="M2.8 19c1.1-3.2 3.3-4.8 6.2-4.8s5.1 1.6 6.2 4.8" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M15.5 5.3a3 3 0 0 1 0 5.7" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M16.3 14.4c2.2.4 3.7 1.9 4.6 4.6" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 export function MarkIcon({ size = 18, color = '#FFFFFF', strokeWidth = 2 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

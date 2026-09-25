@@ -11,6 +11,7 @@ describe('TimeUp API (e2e)', () => {
   let accessToken: string;
   let refreshToken: string;
   let taskId: string;
+  let otherAccessToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -124,9 +125,11 @@ describe('TimeUp API (e2e)', () => {
       })
       .expect(201);
 
+    otherAccessToken = otherReg.body.accessToken;
+
     await request(app.getHttpServer())
       .post(`/api/v1/tasks/${taskId}/complete`)
-      .set('Authorization', `Bearer ${otherReg.body.accessToken}`)
+      .set('Authorization', `Bearer ${otherAccessToken}`)
       .expect(403);
   });
 
@@ -173,5 +176,73 @@ describe('TimeUp API (e2e)', () => {
       .expect(200);
 
     expect(res.body.telegramLinked).toBe(false);
+  });
+
+  describe("do'stlar", () => {
+    let requestId: string;
+
+    it("mavjud bo'lmagan email uchun 404 qaytaradi", async () => {
+      await request(app.getHttpServer())
+        .post('/api/v1/friends/requests')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ email: `yoq-${Date.now()}@timeup.uz` })
+        .expect(404);
+    });
+
+    it("do'stlik so'rovi yuboradi", async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/friends/requests')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ email: otherEmail })
+        .expect(201);
+
+      expect(res.body.status).toBe('PENDING');
+      requestId = res.body.id;
+    });
+
+    it("bir xil foydalanuvchiga qayta so'rov yuborsa 409 qaytaradi", async () => {
+      await request(app.getHttpServer())
+        .post('/api/v1/friends/requests')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ email: otherEmail })
+        .expect(409);
+    });
+
+    it("qabul qiluvchi kiruvchi so'rovlar ro'yxatida ko'radi", async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/friends/requests/incoming')
+        .set('Authorization', `Bearer ${otherAccessToken}`)
+        .expect(200);
+
+      expect(res.body.some((r: { id: string }) => r.id === requestId)).toBe(true);
+    });
+
+    it("boshqa foydalanuvchi begona so'rovni qabul qila olmaydi (403)", async () => {
+      await request(app.getHttpServer())
+        .post(`/api/v1/friends/requests/${requestId}/accept`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(403);
+    });
+
+    it("qabul qiluvchi so'rovni tasdiqlaydi", async () => {
+      await request(app.getHttpServer())
+        .post(`/api/v1/friends/requests/${requestId}/accept`)
+        .set('Authorization', `Bearer ${otherAccessToken}`)
+        .expect(201);
+    });
+
+    it("ikkalasining do'stlar ro'yxatida bir-birini ko'rsatadi", async () => {
+      const mine = await request(app.getHttpServer())
+        .get('/api/v1/friends')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+      expect(mine.body.some((f: { email: string }) => f.email === otherEmail)).toBe(true);
+
+      const theirs = await request(app.getHttpServer())
+        .get('/api/v1/friends')
+        .set('Authorization', `Bearer ${otherAccessToken}`)
+        .expect(200);
+      expect(theirs.body.some((f: { email: string }) => f.email === email)).toBe(true);
+    });
   });
 });

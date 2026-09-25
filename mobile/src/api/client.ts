@@ -141,6 +141,19 @@ export type CreateTaskInput = {
   remindEnabled?: boolean;
 };
 
+export type FriendRequest = {
+  id: string;
+  createdAt: string;
+  sender: { id: string; email: string };
+};
+
+export type Friend = {
+  id: string;
+  email: string;
+  xp: number;
+  streak: { current: number; longest: number };
+};
+
 export const api = {
   register: (email: string, password: string, timezone: string) =>
     request<AuthResponse>('/auth/register', {
@@ -183,4 +196,17 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ notificationLevel }),
     }),
+
+  sendFriendRequest: (email: string) =>
+    authedRequest<{ id: string }>('/friends/requests', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  listIncomingFriendRequests: () =>
+    authedRequest<FriendRequest[]>('/friends/requests/incoming'),
+  acceptFriendRequest: (id: string) =>
+    authedRequest<{ id: string }>(`/friends/requests/${id}/accept`, { method: 'POST' }),
+  declineFriendRequest: (id: string) =>
+    authedRequest<{ id: string }>(`/friends/requests/${id}`, { method: 'DELETE' }),
+  listFriends: () => authedRequest<Friend[]>('/friends'),
 };

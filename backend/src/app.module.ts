@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { TasksModule } from './tasks/tasks.module';
 import { TelegramModule } from './telegram/telegram.module';
+import { FriendsModule } from './friends/friends.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { TelegramModule } from './telegram/telegram.module';
     UsersModule,
     TasksModule,
     TelegramModule,
+    FriendsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
