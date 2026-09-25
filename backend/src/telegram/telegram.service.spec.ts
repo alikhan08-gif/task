@@ -3,6 +3,15 @@ import { ConfigService } from '@nestjs/config';
 import { TelegramService } from './telegram.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TasksService } from '../tasks/tasks.service';
+import { synthesizeSpeech } from './tts.util';
+
+// Haqiqiy tarmoqqa (Google TTS) so'rov yubormaslik uchun testlarda mock'lanadi.
+jest.mock('./tts.util', () => ({
+  synthesizeSpeech: jest.fn(),
+}));
+const mockedSynthesizeSpeech = synthesizeSpeech as jest.MockedFunction<
+  typeof synthesizeSpeech
+>;
 
 describe('TelegramService', () => {
   let service: TelegramService;
@@ -15,6 +24,8 @@ describe('TelegramService', () => {
     delete process.env.TELEGRAM_BOT_TOKEN;
     delete process.env.TELEGRAM_BOT_USERNAME;
     delete process.env.TELEGRAM_WEBHOOK_SECRET;
+
+    mockedSynthesizeSpeech.mockReset().mockResolvedValue(Buffer.from('fake-audio'));
 
     prisma = {
       telegramLinkToken: {
@@ -186,7 +197,8 @@ describe('TelegramService', () => {
 
     it('MEDIUM darajali foydalanuvchi uchun muddati kelganda darrov eslatma yuboradi', async () => {
       const sendMessage = jest.fn().mockResolvedValue({});
-      (service as any).bot = { telegram: { sendMessage } };
+      const sendAudio = jest.fn().mockResolvedValue({});
+      (service as any).bot = { telegram: { sendMessage, sendAudio } };
 
       const dueTask = {
         id: 'task-1',
@@ -221,8 +233,47 @@ describe('TelegramService', () => {
         expect.stringContaining('Sport zali'),
         expect.anything(),
       );
+      expect(mockedSynthesizeSpeech).toHaveBeenCalledWith(
+        expect.stringContaining('Sport zali'),
+      );
+      expect(sendAudio).toHaveBeenCalledWith(
+        'chat-1',
+        expect.objectContaining({ source: expect.any(Buffer) }),
+      );
       expect(prisma.task.update).toHaveBeenCalledWith({
         where: { id: 'task-1' },
+        data: { reminderSentAt: expect.any(Date), reminderCount: { increment: 1 } },
+      });
+    });
+
+    it("TTS xatoga uchrasa ham matnli eslatma va reminderCount tegilmagan holda qoladi", async () => {
+      const sendMessage = jest.fn().mockResolvedValue({});
+      const sendAudio = jest.fn();
+      (service as any).bot = { telegram: { sendMessage, sendAudio } };
+      mockedSynthesizeSpeech.mockRejectedValue(new Error('TTS 503'));
+
+      const dueTask = {
+        id: 'task-5',
+        userId: 'user-5',
+        title: 'TTS sinovi',
+        dueAt: new Date(Date.now() - 1000),
+        reminderCount: 0,
+        reminderSentAt: null,
+        user: { notificationLevel: 'MEDIUM' },
+      };
+      prisma.task.findMany.mockResolvedValue([dueTask]);
+      prisma.telegramLink.findUnique.mockResolvedValue({
+        userId: 'user-5',
+        telegramChatId: 'chat-5',
+      });
+      prisma.task.update.mockResolvedValue({});
+
+      await service.sendDueReminders();
+
+      expect(sendMessage).toHaveBeenCalled();
+      expect(sendAudio).not.toHaveBeenCalled();
+      expect(prisma.task.update).toHaveBeenCalledWith({
+        where: { id: 'task-5' },
         data: { reminderSentAt: expect.any(Date), reminderCount: { increment: 1 } },
       });
     });

@@ -14,6 +14,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TasksService } from '../tasks/tasks.service';
 import { NotificationLevel, TaskStatus } from '@prisma/client';
 import type { Task } from '@prisma/client';
+import { synthesizeSpeech } from './tts.util';
 
 const LINK_TOKEN_TTL_MS = 30 * 60 * 1000;
 
@@ -305,5 +306,28 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         },
       },
     );
+
+    await this.sendReminderVoice(link.telegramChatId, task.title);
+  }
+
+  /**
+   * Ovozli eslatmani best-effort tarzda yuboradi — TTS hujjatlashtirilmagan
+   * bepul endpointdan foydalanadi va ogohlantirmasdan ishlamay qolishi
+   * mumkin, shuning uchun xatolik faqat log'ga yoziladi va asosiy matnli
+   * eslatmaga (yuqorida allaqachon yuborilgan) ta'sir qilmaydi.
+   */
+  private async sendReminderVoice(chatId: string, taskTitle: string): Promise<void> {
+    if (!this.bot) return;
+    try {
+      const audio = await synthesizeSpeech(`${taskTitle} vazifasini bajarish vaqti keldi`);
+      await this.bot.telegram.sendAudio(chatId, {
+        source: audio,
+        filename: 'eslatma.mp3',
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Ovozli eslatma yuborilmadi (TTS): ${(err as Error).message}`,
+      );
+    }
   }
 }
