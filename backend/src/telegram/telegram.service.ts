@@ -244,6 +244,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       where: {
         status: TaskStatus.PENDING,
         deletedAt: null,
+        remindEnabled: true,
         dueAt: { not: null, lte: new Date() },
         reminderCount: { lt: maxReminders },
       },

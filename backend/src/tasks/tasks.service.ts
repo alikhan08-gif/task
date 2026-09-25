@@ -32,6 +32,7 @@ export class TasksService {
         title: dto.title,
         description: dto.description,
         dueAt: dto.dueAt ? new Date(dto.dueAt) : null,
+        remindEnabled: dto.remindEnabled,
       },
     });
   }
@@ -49,14 +50,19 @@ export class TasksService {
 
   async update(userId: string, taskId: string, dto: UpdateTaskDto) {
     await this.findOwned(userId, taskId);
+    // Muddat o'zgarsa yoki eslatma qayta yoqilsa, eslatma hisoblagichini
+    // qayta boshlaymiz — aks holda oldingi holatda "allaqachon eslatilgan"
+    // deb qolib, yangi eslatma hech qachon yuborilmasdi.
+    const resetsReminder = Boolean(dto.dueAt) || dto.remindEnabled === true;
     return this.prisma.task.update({
       where: { id: taskId },
       data: {
         title: dto.title,
         description: dto.description,
         dueAt: dto.dueAt ? new Date(dto.dueAt) : undefined,
-        reminderSentAt: dto.dueAt ? null : undefined,
-        reminderCount: dto.dueAt ? 0 : undefined,
+        remindEnabled: dto.remindEnabled,
+        reminderSentAt: resetsReminder ? null : undefined,
+        reminderCount: resetsReminder ? 0 : undefined,
         version: { increment: 1 },
       },
     });

@@ -52,6 +52,49 @@ describe('TasksService', () => {
     });
   });
 
+  describe('update', () => {
+    const owned = { id: 'task-1', userId: 'user-1', deletedAt: null };
+
+    it("dueAt o'zgarsa reminderSentAt/reminderCount qayta boshlanadi", async () => {
+      prisma.task.findUnique.mockResolvedValue(owned);
+      prisma.task.update.mockResolvedValue({});
+
+      await service.update('user-1', 'task-1', { dueAt: '2026-01-01T10:00:00.000Z' });
+
+      expect(prisma.task.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ reminderSentAt: null, reminderCount: 0 }),
+        }),
+      );
+    });
+
+    it('remindEnabled true qilib yoqilsa reminderSentAt/reminderCount qayta boshlanadi', async () => {
+      prisma.task.findUnique.mockResolvedValue(owned);
+      prisma.task.update.mockResolvedValue({});
+
+      await service.update('user-1', 'task-1', { remindEnabled: true });
+
+      expect(prisma.task.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ reminderSentAt: null, reminderCount: 0 }),
+        }),
+      );
+    });
+
+    it("faqat sarlavha o'zgarsa reminderSentAt/reminderCount tegilmaydi", async () => {
+      prisma.task.findUnique.mockResolvedValue(owned);
+      prisma.task.update.mockResolvedValue({});
+
+      await service.update('user-1', 'task-1', { title: 'Yangi nom' });
+
+      expect(prisma.task.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ reminderSentAt: undefined, reminderCount: undefined }),
+        }),
+      );
+    });
+  });
+
   describe('complete', () => {
     it('allaqachon bajarilgan vazifani qayta bajarish idempotent (xato bermaydi, qayta XP bermaydi)', async () => {
       const completedTask = {

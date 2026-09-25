@@ -129,6 +129,7 @@ export type Task = {
   dueAt: string | null;
   status: TaskStatus;
   completedAt: string | null;
+  remindEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -137,6 +138,7 @@ export type CreateTaskInput = {
   title: string;
   description?: string;
   dueAt?: string;
+  remindEnabled?: boolean;
 };
 
 export const api = {

@@ -24,7 +24,7 @@ export function CreateTaskScreen({ navigation, route }: Props) {
   const existingTask = taskId ? tasks.find((t) => t.id === taskId) : undefined;
   const isEditMode = Boolean(taskId);
 
-  const [reminderOn, setReminderOn] = useState(true);
+  const [reminderOn, setReminderOn] = useState(existingTask?.remindEnabled ?? true);
   const [title, setTitle] = useState(existingTask?.title ?? '');
   const [description, setDescription] = useState(existingTask?.description ?? '');
   const [dateStr, setDateStr] = useState(
@@ -48,6 +48,7 @@ export function CreateTaskScreen({ navigation, route }: Props) {
       title: title.trim(),
       description: description.trim() || undefined,
       dueAt,
+      remindEnabled: reminderOn,
     };
     const ok = isEditMode && taskId ? await updateTask(taskId, input) : await createTask(input);
     setIsSaving(false);
@@ -110,7 +111,9 @@ export function CreateTaskScreen({ navigation, route }: Props) {
         <Pressable style={styles.reminderRow} onPress={() => setReminderOn((v) => !v)}>
           <View style={{ flexShrink: 1 }}>
             <Text style={styles.reminderTitle}>Eslatma yuborish</Text>
-            <Text style={styles.reminderSubtitle}>Belgilangan vaqtdan 15 daqiqa oldin</Text>
+            <Text style={styles.reminderSubtitle}>
+              Muddati kelganda Telegram orqali (tezligi Profil &gt; Bildirishnomalarda)
+            </Text>
           </View>
           <View style={[styles.toggleTrack, { backgroundColor: reminderOn ? colors.accent : colors.border }]}>
             <View style={[styles.toggleThumb, reminderOn ? { right: 3 } : { left: 3 }]} />

@@ -42,9 +42,13 @@ export function HomeScreen() {
           <Text style={styles.dateText}>{formatHeaderDate(today)}</Text>
           <Text style={styles.heading}>Xayrli tong, {firstName}</Text>
         </View>
-        <View style={styles.iconBtn}>
+        <Pressable
+          style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.7 }]}
+          onPress={() => navigation.navigate('Profile')}
+          accessibilityLabel="Bildirishnoma sozlamalari"
+        >
           <BellIcon size={19} />
-        </View>
+        </Pressable>
       </View>
 
       <View style={styles.statsRow}>

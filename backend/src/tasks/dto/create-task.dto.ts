@@ -1,4 +1,4 @@
-import { IsDateString, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateTaskDto {
   @IsString()
@@ -12,4 +12,8 @@ export class CreateTaskDto {
   @IsOptional()
   @IsDateString()
   dueAt?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  remindEnabled?: boolean;
 }

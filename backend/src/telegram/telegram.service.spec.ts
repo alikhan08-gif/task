@@ -211,6 +211,7 @@ describe('TelegramService', () => {
           where: expect.objectContaining({
             status: 'PENDING',
             deletedAt: null,
+            remindEnabled: true,
           }),
           include: { user: { select: { notificationLevel: true } } },
         }),
